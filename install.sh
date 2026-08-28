@@ -86,8 +86,78 @@ fi
 mkdir -p "$THEME_DIR"
 cp "$THEME_SRC" "$THEME_DST"
 
+# Detect distro and set the OS icon in the installed theme.
+DISTRO_ID=""
+DISTRO_LIKE=""
+
+if [ -r /etc/os-release ]; then
+    . /etc/os-release
+    DISTRO_ID="${ID:-}"
+    DISTRO_LIKE="${ID_LIKE:-}"
+fi
+
+case "$DISTRO_ID" in
+    nobara|fedora)
+        OS_ICON=""
+        ;;
+    opensuse*|suse|sles)
+        OS_ICON=""
+        ;;
+    arch|cachyos|endeavouros|garuda|manjaro)
+        OS_ICON=""
+        ;;
+    ubuntu|pop|linuxmint)
+        OS_ICON=""
+        ;;
+    debian)
+        OS_ICON=""
+        ;;
+    *)
+        case "$DISTRO_LIKE" in
+            *fedora*|*rhel*)
+                OS_ICON=""
+                ;;
+            *arch*)
+                OS_ICON=""
+                ;;
+            *ubuntu*)
+                OS_ICON=""
+                ;;
+            *debian*)
+                OS_ICON=""
+                ;;
+            *suse*)
+                OS_ICON=""
+                ;;
+            *)
+                OS_ICON=""
+                ;;
+        esac
+        ;;
+esac
+
+python3 - "$THEME_DST" "$OS_ICON" <<'PYICON'
+import json
+import sys
+
+path, icon = sys.argv[1], sys.argv[2]
+
+with open(path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+for block in data.get("blocks", []):
+    for segment in block.get("segments", []):
+        if segment.get("type") == "os":
+            segment["template"] = f" {icon} "
+
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+PYICON
+
 echo "✓ Theme installed:"
 echo "  $THEME_DST"
+echo "✓ Distro icon: $OS_ICON (${DISTRO_ID:-unknown})"
 
 # ------------------------------------------------------------
 # 4. Install JetBrainsMono Nerd Font if missing
